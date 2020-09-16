@@ -1,6 +1,7 @@
 """Inference program and ancilliary functions."""
 from concurrent.futures import as_completed, ThreadPoolExecutor
 import logging
+import time
 import os
 import queue
 import threading
@@ -19,6 +20,7 @@ def run_prediction(
         chunk_len, chunk_ovlp, batch_size=200,
         save_features=False, enable_chunking=True):
     """Inference worker."""
+    time1 = time.time()
     logger = medaka.common.get_named_logger('PWorker')
 
     remainder_regions = list()
@@ -75,6 +77,8 @@ def run_prediction(
     remainder_regions = loader.remainders
     logger.info("All done, {} remainder regions.".format(
         len(remainder_regions)))
+    time2 = time.time()
+    print("Prdiction executing time:", (time2 - time1), "s")
     return remainder_regions
 
 
@@ -86,10 +90,13 @@ def predict(args):
 
     import tensorflow as tf
     from tensorflow.keras import backend as K
+    logger = medaka.common.get_named_logger('Predict')
+    # logger.info("remainder_regions parameters: args.regions: {} args.tag_name:{} args.tag_value:{} args.tag_keep_missing:{} args.RG:{} args.allow_cudnn:{} args.output:{} args.bam:{} args.chunk_len:{} args.chunk_ovlp:{} :args.batch_size{} args.save_features:{}.".format(
+        # args.regions, args.tag_name, args.tag_value, args.tag_keep_missing, args.RG, args.allow_cudnn, args.output, args.bam, args.chunk_len, args.chunk_ovlp, args.batch_size, args.save_features))
 
     args.regions = medaka.common.get_regions(
         args.bam, region_strs=args.regions)
-    logger = medaka.common.get_named_logger('Predict')
+    
     logger.info('Processing region(s): {}'.format(
         ' '.join(str(r) for r in args.regions)))
 
@@ -143,6 +150,8 @@ def predict(args):
 
     # the returned regions are those where the pileup width is smaller than
     # chunk_len
+    # logger.info("remainder_regions parameters: args.regions: {} args.tag_name:{} args.tag_value:{} args.tag_keep_missing:{} args.RG:{} args.allow_cudnn:{} args.output:{} args.bam:{} {} {} {} args.chunk_len:{} args.chunk_ovlp:{} :args.batch_size{} args.save_features:{}.".format(
+        # args.regions, args.tag_name, args.tag_value, args.tag_keep_missing, args.RG, args.allow_cudnn, args.output, args.bam, regions, model, feature_encoder, args.chunk_len, args.chunk_ovlp, args.batch_size, args.save_features))
     remainder_regions = run_prediction(
         args.output, args.bam, regions, model, feature_encoder,
         args.chunk_len, args.chunk_ovlp,
